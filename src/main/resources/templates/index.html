@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>宿舍洗衣機管理系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .machine-card {
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .machine-card:hover {
+            transform: translateY(-2px);
+        }
+        .washing-icon::before {
+            content: "〜";
+            font-size: 1.8em;
+            margin-right: 8px;
+            color: #0066cc;
+            font-weight: bold;
+        }
+        .drying-icon::before {
+            content: "○";
+            font-size: 1.8em;
+            margin-right: 8px;
+            color: #ff6600;
+            font-weight: bold;
+        }
+        .available-bg {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 4px solid #28a745;
+        }
+        .in-use-bg {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-left: 4px solid #ffc107;
+        }
+        .out-of-order-bg {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border-left: 4px solid #dc3545;
+        }
+        .reservation-form {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .floor-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .system-title {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+        
+        /* 倒數計時樣式 */
+        .countdown-timer {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            min-width: 120px;
+            text-align: center;
+            background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+            color: #212529;
+            border: 2px solid #ffc107;
+            box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+        }
+        
+        .countdown-timer.warning {
+            background: linear-gradient(135deg, #fd7e14 0%, #ff8c42 100%);
+            border-color: #fd7e14;
+            animation: pulse 1s infinite;
+            box-shadow: 0 2px 8px rgba(253, 126, 20, 0.4);
+        }
+        
+        .countdown-timer.danger {
+            background: linear-gradient(135deg, #dc3545 0%, #e55353 100%);
+            border-color: #dc3545;
+            color: white;
+            animation: blink 0.8s infinite;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.5);
+        }
+        
+        .countdown-timer.completed {
+            background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+            border-color: #28a745;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
+        .time-display {
+            font-weight: bold;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideInRight 0.5s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .time-info {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <!-- 標題 -->
+                <h1 class="text-center my-4 system-title">🏠 宿舍洗衣機管理系統</h1>
+                
+                <!-- 成功訊息 -->
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <span th:text="${success}">成功訊息</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                
+                <!-- 錯誤訊息 -->
+                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span th:text="${error}">錯誤訊息</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                
+                <!-- 樓層選擇 -->
+                <div class="text-center mb-4">
+                    <div class="btn-group" role="group">
+                        <a th:href="@{/(floor=1)}" 
+                           th:class="${currentFloor == 1} ? 'btn btn-primary btn-lg' : 'btn btn-outline-primary btn-lg'">
+                           1樓
+                        </a>
+                        <a th:href="@{/(floor=2)}" 
+                           th:class="${currentFloor == 2} ? 'btn btn-primary btn-lg' : 'btn btn-outline-primary btn-lg'">
+                           2樓
+                        </a>
+                        <a th:href="@{/(floor=3)}" 
+                           th:class="${currentFloor == 3} ? 'btn btn-primary btn-lg' : 'btn btn-outline-primary btn-lg'">
+                           3樓
+                        </a>
+                        <a th:href="@{/(floor=4)}" 
+                           th:class="${currentFloor == 4} ? 'btn btn-primary btn-lg' : 'btn btn-outline-primary btn-lg'">
+                           4樓
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- 樓層標題 -->
+                <div class="floor-header text-center">
+                    <h2 class="mb-0">
+                        <i class="fas fa-building me-2"></i>
+                        第 <span th:text="${currentFloor}">1</span> 樓機台狀況
+                        <small class="ms-3">⏱️ 即時倒數計時</small>
+                    </h2>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 機台列表 -->
+        <div class="row g-4">
+            <!-- 當有機台資料時 -->
+            <div th:if="${machines != null and !machines.isEmpty()}">
+                <div class="row g-4">
+                    <div th:each="machine : ${machines}" class="col-xl-4 col-lg-6 col-md-6 col-sm-12">
+                        <div class="card machine-card shadow-sm h-100"
+                             th:classappend="${machine.status.name() == 'AVAILABLE'} ? 'available-bg' : 
+                                            (${machine.status.name() == 'IN_USE'} ? 'in-use-bg' : 'out-of-order-bg')">
+                            <div class="card-body d-flex flex-column">
+                                <!-- 機台標題 -->
+                                <h5 class="card-title fw-bold mb-3">
+                                    <span th:classappend="${machine.type.name() == 'WASHING'} ? 'washing-icon' : 'drying-icon'"></span>
+                                    <span th:text="${machine.name}">機台名稱</span>
+                                </h5>
+                                
+                                <!-- 機台資訊 -->
+                                <div class="mb-3">
+                                    <p class="card-text mb-2">
+                                        <strong>🔧 類型：</strong>
+                                        <span th:if="${machine.type.name() == 'WASHING'}" class="badge bg-info">洗衣機</span>
+                                        <span th:if="${machine.type.name() == 'DRYING'}" class="badge bg-warning">烘衣機</span>
+                                    </p>
+                                    
+                                    <p class="card-text mb-3">
+                                        <strong>📊 狀態：</strong>
+                                        <span th:if="${machine.status.name() == 'AVAILABLE'}" class="badge bg-success fs-6">✅ 可用</span>
+                                        <span th:if="${machine.status.name() == 'IN_USE'}" class="badge bg-warning fs-6">⏰ 使用中</span>
+                                        <span th:if="${machine.status.name() == 'OUT_OF_ORDER'}" class="badge bg-danger fs-6">❌ 故障</span>
+                                    </p>
+                                </div>
+                                
+                                <!-- 使用中機台的即時倒數計時 -->
+                                <div th:if="${machine.status.name() == 'IN_USE'}" class="mb-3">
+                                    <div class="time-info">
+                                        <p class="mb-2">
+                                            <strong>🏠 使用房號：</strong>
+                                            <span class="text-primary fw-bold" th:text="${machine.currentUserRoom}">-</span>
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>⏱️ 剩餘時間：</strong>
+                                        </p>
+                                        <!-- 即時倒數計時器 -->
+                                        <div class="text-center">
+                                            <span th:if="${machine.remainingMinutes != null and machine.remainingMinutes > 0}" 
+                                                  th:data-machine-id="${machine.machineId}"
+                                                  th:data-remaining="${machine.remainingMinutes}"
+                                                  th:data-user="${machine.currentUserRoom}"
+                                                  class="countdown-timer">
+                                                <i class="fas fa-clock me-2"></i>
+                                                <span class="time-display" th:text="${machine.remainingMinutes} + '分鐘'"></span>
+                                            </span>
+                                            <span th:unless="${machine.remainingMinutes != null and machine.remainingMinutes > 0}" 
+                                                  class="badge bg-secondary">時間未設定</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 按鈕區域 -->
+                                <div class="mt-auto">
+                                    <!-- 可用機台：預約按鈕 -->
+                                    <div th:if="${machine.status.name() == 'AVAILABLE'}">
+                                        <button class="btn btn-success btn-lg w-100 fw-bold" 
+                                                th:onclick="|toggleForm('form-${machine.machineId}')|">
+                                            📅 立即預約
+                                        </button>
+                                        
+                                        <!-- 預約表單 -->
+                                        <div th:id="|form-${machine.machineId}|" class="reservation-form">
+                                            <h6 class="text-center mb-3 text-primary fw-bold">📝 填寫預約資訊</h6>
+                                            <form th:action="@{/reservation/make}" method="post">
+                                                <input type="hidden" name="machineId" th:value="${machine.machineId}">
+                                                <input type="hidden" name="floor" th:value="${currentFloor}">
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">🎓 學號：</label>
+                                                    <input type="text" name="studentId" class="form-control" 
+                                                           placeholder="例如：B12345678" required maxlength="15">
+                                                    <div class="form-text">請輸入您的學號</div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">🏠 房號：</label>
+                                                    <input type="text" name="userRoom" class="form-control" 
+                                                           placeholder="例如：101、205" required maxlength="10">
+                                                    <div class="form-text">請輸入您的房間號碼</div>
+                                                </div>
+                                                
+                                                <div class="d-grid gap-2">
+                                                    <button type="submit" class="btn btn-primary fw-bold">
+                                                        ✅ 確認預約（1小時）
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary" 
+                                                            th:onclick="|toggleForm('form-${machine.machineId}')|">
+                                                        ❌ 取消
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 🗑️ 已移除使用中機台的取消預約按鈕 -->
+                                    
+                                    <!-- 故障機台 -->
+                                    <div th:if="${machine.status.name() == 'OUT_OF_ORDER'}">
+                                        <button class="btn btn-secondary btn-lg w-100 fw-bold" disabled>
+                                            🔧 維修中，暫停服務
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 沒有機台時顯示 -->
+            <div th:if="${machines == null or machines.isEmpty()}" class="col-12">
+                <div class="alert alert-info text-center py-5">
+                    <h3 class="mb-3">😔 第 <span th:text="${currentFloor}">1</span> 樓目前沒有機台</h3>
+                    <p class="mb-0">請選擇其他樓層查看機台狀況</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部功能連結 -->
+        <div class="text-center my-5">
+            <div class="btn-group" role="group">
+                <a href="/admin" class="btn btn-outline-primary btn-lg">
+                    🔧 管理員面板
+                </a>
+                <a href="/reservation/my" class="btn btn-outline-info btn-lg">
+                    📋 我的預約
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 主頁倒數計時功能 -->
+	<script>
+	// 主頁倒數計時管理器（localStorage 版本）
+	class MainPageCountdown {
+	    constructor() {
+	        this.timers = new Map();
+	        this.completedMachines = new Set();
+	        this.init();
+	    }
+	    
+	    init() {
+	        console.log('🏠 主頁倒數計時系統啟動...');
+	        
+	        // 清理過期的 localStorage 資料
+	        this.cleanExpiredStorage();
+	        
+	        document.querySelectorAll('.countdown-timer').forEach(timer => {
+	            const machineId = timer.dataset.machineId;
+	            const remainingMinutes = parseInt(timer.dataset.remaining);
+	            const userRoom = timer.dataset.user;
+	            
+	            // 🆕 優先從 localStorage 恢復倒數計時
+	            const savedEndTime = localStorage.getItem(`machine_${machineId}_endTime`);
+	            const savedUserRoom = localStorage.getItem(`machine_${machineId}_userRoom`);
+	            
+	            if (savedEndTime && savedUserRoom) {
+	                const now = Date.now();
+	                const remainingSeconds = Math.max(0, Math.floor((parseInt(savedEndTime) - now) / 1000));
+	                
+	                if (remainingSeconds > 0) {
+	                    console.log(`🔄 從 localStorage 恢復機器 ${machineId} 倒數計時: ${remainingSeconds} 秒`);
+	                    this.startCountdown(machineId, remainingSeconds, savedUserRoom);
+	                    return;
+	                } else {
+	                    // 時間已過，清除 localStorage
+	                    this.clearMachineStorage(machineId);
+	                }
+	            }
+	            
+	            // 沒有儲存的時間，使用伺服器時間
+	            if (remainingMinutes > 0 && !this.completedMachines.has(machineId)) {
+	                console.log(`⏰ 主頁啟動機器 ${machineId} 倒數計時: ${remainingMinutes} 分鐘`);
+	                this.startCountdown(machineId, remainingMinutes * 60, userRoom);
+	            }
+	        });
+	        
+	        // 每2分鐘與伺服器同步一次
+	        setInterval(() => this.syncWithServer(), 120000);
+	        
+	        console.log('✅ 主頁倒數計時系統初始化完成');
+	    }
+	    
+	    startCountdown(machineId, remainingSeconds, userRoom) {
+	        // 檢查是否已完成
+	        if (this.completedMachines.has(machineId)) {
+	            console.log(`⚠️ 機器 ${machineId} 已完成，不啟動新的計時器`);
+	            return;
+	        }
+	        
+	        // 🆕 計算並儲存真實的結束時間到 localStorage
+	        const endTime = Date.now() + (remainingSeconds * 1000);
+	        localStorage.setItem(`machine_${machineId}_endTime`, endTime.toString());
+	        localStorage.setItem(`machine_${machineId}_userRoom`, userRoom);
+	        console.log(`💾 儲存機器 ${machineId} 結束時間到 localStorage: ${new Date(endTime)}`);
+	        
+	        // 清除舊的計時器
+	        if (this.timers.has(machineId)) {
+	            clearInterval(this.timers.get(machineId));
+	            this.timers.delete(machineId);
+	        }
+	        
+	        const timerElement = document.querySelector(`[data-machine-id="${machineId}"] .time-display`);
+	        const badgeElement = document.querySelector(`[data-machine-id="${machineId}"]`);
+	        
+	        if (!timerElement || !badgeElement) {
+	            console.error(`❌ 找不到機器 ${machineId} 的計時器元素`);
+	            return;
+	        }
+	        
+	        const timer = setInterval(() => {
+	            // 再次檢查是否已完成
+	            if (this.completedMachines.has(machineId)) {
+	                console.log(`🛑 機器 ${machineId} 已標記為完成，停止計時器`);
+	                clearInterval(timer);
+	                this.timers.delete(machineId);
+	                return;
+	            }
+	            
+	            // 🆕 基於 localStorage 中的結束時間計算真實剩餘時間
+	            const savedEndTime = localStorage.getItem(`machine_${machineId}_endTime`);
+	            if (!savedEndTime) {
+	                console.log(`⚠️ 機器 ${machineId} 的 localStorage 資料遺失，停止計時器`);
+	                clearInterval(timer);
+	                this.timers.delete(machineId);
+	                return;
+	            }
+	            
+	            const now = Date.now();
+	            const realRemainingSeconds = Math.max(0, Math.floor((parseInt(savedEndTime) - now) / 1000));
+	            
+	            if (realRemainingSeconds <= 0) {
+	                // 立即標記為完成
+	                this.completedMachines.add(machineId);
+	                
+	                // 停止計時器
+	                clearInterval(timer);
+	                this.timers.delete(machineId);
+	                
+	                console.log(`🎯 機器 ${machineId} 時間到！立即停止計時器`);
+	                this.onTimeExpired(machineId, userRoom);
+	                return;
+	            }
+	            
+	            // 更新顯示
+	            const minutes = Math.floor(realRemainingSeconds / 60);
+	            const seconds = realRemainingSeconds % 60;
+	            
+	            let display;
+	            if (minutes > 0) {
+	                display = `${minutes}分${seconds.toString().padStart(2, '0')}秒`;
+	            } else {
+	                display = `${seconds}秒`;
+	            }
+	            
+	            timerElement.innerHTML = `<i class="fas fa-clock me-2"></i>${display}`;
+	            
+	            // 根據剩餘時間調整樣式
+	            this.updateTimerStyle(badgeElement, realRemainingSeconds);
+	            
+	        }, 1000);
+	        
+	        this.timers.set(machineId, timer);
+	    }
+	    
+	    onTimeExpired(machineId, userRoom) {
+	        console.log(`🎉 機器 ${machineId} 時間到！房間 ${userRoom}`);
+	        
+	        // 確保計時器已停止且標記為完成
+	        if (this.timers.has(machineId)) {
+	            clearInterval(this.timers.get(machineId));
+	            this.timers.delete(machineId);
+	        }
+	        this.completedMachines.add(machineId);
+	        
+	        // 🆕 清除 localStorage 資料
+	        this.clearMachineStorage(machineId);
+	        
+	        const timerElement = document.querySelector(`[data-machine-id="${machineId}"]`);
+	        
+	        if (!timerElement) {
+	            console.error(`❌ 找不到機器 ${machineId} 的計時器元素`);
+	            return;
+	        }
+	        
+	        // 立即更新顯示
+	        timerElement.innerHTML = '<i class="fas fa-check me-2"></i>洗衣完成';
+	        timerElement.className = 'countdown-timer completed';
+	        
+	        // 顯示通知
+	        this.showNotification(
+	            `🎉 洗衣完成！`,
+	            `房間 ${userRoom} 的機器 #${machineId} 已完成使用，可以去收衣服了！`,
+	            'success',
+	            10000
+	        );
+	        
+	        // 播放提示音
+	        this.playNotificationSound();
+	        
+	        // 通知伺服器但不依賴結果
+	        this.notifyServerAsync(machineId);
+	        
+	        // 延遲重新整理頁面
+	        setTimeout(() => {
+	            console.log('🔄 洗衣完成，重新整理頁面同步狀態...');
+	            window.location.reload();
+	        }, 8000);
+	    }
+	    
+	    // 🆕 清除機器的 localStorage 資料
+	    clearMachineStorage(machineId) {
+	        localStorage.removeItem(`machine_${machineId}_endTime`);
+	        localStorage.removeItem(`machine_${machineId}_userRoom`);
+	        console.log(`🗑️ 清除機器 ${machineId} 的 localStorage 資料`);
+	    }
+	    
+	    // 🆕 清理過期的 localStorage 資料
+	    cleanExpiredStorage() {
+	        const now = Date.now();
+	        const keysToRemove = [];
+	        
+	        for (let i = 0; i < localStorage.length; i++) {
+	            const key = localStorage.key(i);
+	            if (key && key.startsWith('machine_') && key.endsWith('_endTime')) {
+	                const endTime = parseInt(localStorage.getItem(key));
+	                if (endTime && endTime < now) {
+	                    // 找到對應的機器ID
+	                    const machineId = key.replace('machine_', '').replace('_endTime', '');
+	                    keysToRemove.push(machineId);
+	                }
+	            }
+	        }
+	        
+	        // 清除過期的資料
+	        keysToRemove.forEach(machineId => {
+	            this.clearMachineStorage(machineId);
+	            console.log(`🧹 清除過期的機器 ${machineId} localStorage 資料`);
+	        });
+	    }
+	    
+	    // 其他方法保持不變...
+	    updateTimerStyle(badgeElement, remainingSeconds) {
+	        badgeElement.className = badgeElement.className.replace(/warning|danger|completed/g, '');
+	        
+	        if (remainingSeconds <= 60) {
+	            badgeElement.className = 'countdown-timer danger';
+	        } else if (remainingSeconds <= 300) {
+	            badgeElement.className = 'countdown-timer warning';
+	        } else {
+	            badgeElement.className = 'countdown-timer';
+	        }
+	    }
+	    
+	    async notifyServerAsync(machineId) {
+	        try {
+	            const response = await fetch(`/admin/machines/${machineId}/auto-complete`, {
+	                method: 'POST',
+	                headers: { 'Content-Type': 'application/json' }
+	            });
+	            
+	            if (response.ok) {
+	                const data = await response.json();
+	                console.log(data.success ? `✅ 成功通知伺服器機器 ${machineId} 完成` : `⚠️ 伺服器回應失敗`);
+	            }
+	        } catch (error) {
+	            console.error(`❌ 無法通知伺服器: ${error.message}`);
+	        }
+	    }
+	    
+	    async syncWithServer() {
+	        try {
+	            const response = await fetch('/admin/machines/status');
+	            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	            const machines = await response.json();
+	            
+	            console.log('🔄 主頁與伺服器同步機器狀態...');
+	            
+	            machines.forEach(machine => {
+	                if (machine.status === 'AVAILABLE') {
+	                    // 如果伺服器顯示可用，清除 localStorage
+	                    if (localStorage.getItem(`machine_${machine.machineId}_endTime`)) {
+	                        this.clearMachineStorage(machine.machineId);
+	                        this.completedMachines.delete(machine.machineId);
+	                        console.log(`✅ 機器 ${machine.machineId} 已在伺服器端變為可用，清除 localStorage`);
+	                    }
+	                }
+	            });
+	        } catch (error) {
+	            console.error('❌ 主頁同步失敗:', error);
+	        }
+	    }
+	    
+	    showNotification(title, message, type = 'info', duration = 8000) {
+	        const notification = document.createElement('div');
+	        notification.className = `alert alert-${type} alert-dismissible fade show notification`;
+	        notification.innerHTML = `
+	            <div class="d-flex align-items-center">
+	                <div class="me-3"><i class="fas fa-bell fs-4"></i></div>
+	                <div class="flex-grow-1">
+	                    <h6 class="mb-1">${title}</h6>
+	                    <p class="mb-0">${message}</p>
+	                </div>
+	                <button type="button" class="btn-close" onclick="this.closest('.notification').remove()"></button>
+	            </div>
+	        `;
+	        
+	        document.body.appendChild(notification);
+	        setTimeout(() => { if (notification.parentNode) notification.remove(); }, duration);
+	    }
+	    
+	    playNotificationSound() {
+	        try {
+	            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+	            const oscillator = audioContext.createOscillator();
+	            const gainNode = audioContext.createGain();
+	            
+	            oscillator.connect(gainNode);
+	            gainNode.connect(audioContext.destination);
+	            oscillator.frequency.value = 880;
+	            oscillator.type = 'sine';
+	            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+	            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+	            oscillator.start(audioContext.currentTime);
+	            oscillator.stop(audioContext.currentTime + 1);
+	        } catch (error) {
+	            console.log('🔇 無法播放提示音:', error);
+	        }
+	    }
+	}
+
+	// 其他函數保持不變
+	function toggleForm(formId) {
+	    var form = document.getElementById(formId);
+	    form.style.display = form.style.display === 'block' ? 'none' : 'block';
+	}
+
+	setTimeout(function() {
+	    var alerts = document.querySelectorAll('.alert:not(.notification)');
+	    alerts.forEach(function(alert) {
+	        var bsAlert = new bootstrap.Alert(alert);
+	        bsAlert.close();
+	    });
+	}, 5000);
+
+	document.addEventListener('DOMContentLoaded', function() {
+	    if (document.querySelector('.countdown-timer')) {
+	        window.mainPageCountdown = new MainPageCountdown();
+	    }
+	});
+	</script>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>登入 - 宿舍洗衣機管理系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .login-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .login-body {
+            padding: 40px;
+        }
+        .form-control {
+            border-radius: 25px;
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        .form-control:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        .btn-login {
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            transition: transform 0.3s;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="login-card">
+                <!-- 登入標題 -->
+                <div class="login-header">
+                    <h2 class="mb-0">
+                        🏠 宿舍洗衣機系統
+                    </h2>
+                    <p class="mb-0 mt-2">請登入您的帳號</p>
+                </div>
+                
+                <div class="login-body">
+                    <!-- 錯誤訊息 -->
+                    <div th:if="${param.error}" class="alert alert-danger" role="alert">
+                        帳號或密碼錯誤，請重新輸入
+                    </div>
+                    
+                    <!-- 登出成功訊息 -->
+                    <div th:if="${param.logout}" class="alert alert-success" role="alert">
+                        您已成功登出
+                    </div>
+                    
+                    <!-- 自定義錯誤訊息 -->
+                    <div th:if="${error}" class="alert alert-danger" role="alert">
+                        <span th:text="${error}">錯誤訊息</span>
+                    </div>
+                    
+                    <!-- 成功訊息 -->
+                    <div th:if="${success}" class="alert alert-success" role="alert">
+                        <span th:text="${success}">成功訊息</span>
+                    </div>
+                    
+                    <!-- 登入表單 -->
+                    <form th:action="@{/login}" method="post" id="loginForm">
+                        <div class="mb-3">
+                            <label for="studentId" class="form-label">學號</label>
+                            <input type="text" class="form-control" id="studentId" name="studentId"
+                                   placeholder="請輸入學號（例：ADMIN001）" required maxlength="15" 
+                                   autocomplete="username">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label">密碼</label>
+                            <input type="password" class="form-control" id="password" name="password"
+                                   placeholder="請輸入密碼" required autocomplete="current-password">
+                        </div>
+                        
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-success btn-login">登入</button>
+                        </div>
+                        
+                        <div class="text-center">
+                            <p class="mb-0">還沒有帳號？</p>
+                            <a href="/register" class="btn btn-outline-primary">立即註冊</a>
+                        </div>
+                        
+                        <!-- 測試帳號提示 -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <small class="text-muted">
+                                <strong>測試帳號：</strong><br>
+                                學號：ADMIN001<br>
+                                密碼：password
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 底部連結 -->
+            <div class="text-center mt-4">
+                <a href="/h2-console" class="text-white-50" target="_blank">
+                    資料庫管理
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 🆕 針對認證問題的 JavaScript 偵錯 -->
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            console.log('=== 表單提交偵錯 ===');
+            console.log('學號:', document.getElementById('studentId').value);
+            console.log('密碼長度:', document.getElementById('password').value.length);
+            console.log('表單 action:', this.action);
+            console.log('表單 method:', this.method);
+        });
+        
+        // 頁面載入時顯示當前 URL
+        console.log('當前頁面 URL:', window.location.href);
+    </script>
+</body>
+</html>
